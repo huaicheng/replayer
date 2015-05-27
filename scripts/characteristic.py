@@ -55,9 +55,9 @@ def getTraceInfo(tracefile):
 
 
   out.write("IO Count: "+str(ioCount) +"\n")
-  out.write("% Read: "+"{0:.2f}".format(float(readCount)/float(ioCount)) +"\n")
-  out.write("% Write: "+"{0:.2f}".format(float(writeCount)/float(ioCount)) +"\n")
-  out.write("% randomWrite in Write: "+"{0:.2f}".format(float(randomWriteCount)/float(writeCount)) +"\n")
+  out.write("% Read: "+"{0:.2f}".format((float(readCount)/float(ioCount))*100) +"\n")
+  out.write("% Write: "+"{0:.2f}".format((float(writeCount)/float(ioCount))*100) +"\n")
+  out.write("% randomWrite in Write: "+"{0:.2f}".format((float(randomWriteCount)/float(writeCount))*100) +"\n")
 
   writeSize.sort()
   readSize.sort()

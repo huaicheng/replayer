@@ -44,21 +44,27 @@ Well ordered means the traces are ordered from the earliest time to the latest t
 <pre>python trace-editor.py -dir &lt;dirname&gt; -combine</pre>
 
 <p>
-4. Break to RAID-0 disks
+4. Merge traces (Precondition: The traces must have been preprocessed).<br />
+Merge the traces in a directory, all timestamps will be subtracted with the lowest timestamp.
+</p>
+<pre>python trace-editor.py -dir &lt;dirname&gt; -merge</pre>
+
+<p>
+5. Break to RAID-0 disks
 In this example get RAID disks from 4 disks with the stripe unit size 65536 bytes
 </p>
 
 <pre>python trace-editor.py -breaktoraid -file &lt;infile&gt; -ndisk 4 -stripe 65536</pre>
 
 <p>
-5. Check IO imbalance in the RAID Disks.
+6. Check IO imbalance in the RAID Disks.
 This example uses 3disks with the granularity of 5minutes.
 </p>
 
 <pre>python trace-editor.py -ioimbalance -file &lt;filename&gt; -granularity 5</pre>
 
 <p>
-6. Check the busiest or the most loaded (in kB) time for a specific disk in a directory <br />
+7. Check the busiest or the most loaded (in kB) time for a specific disk in a directory <br />
 Busiest = a time range with the largest number of requests <br />
 Most Loaded = a time range with the largest total requests size <br />
 <br />
@@ -73,28 +79,28 @@ top - top n result in this example 3 top results <br />
 <pre>python trace-editor.py -dir &lt;dirname&gt; -busiest -duration 60 -top 3</pre>
 
 <p>
-7. Top Large IO, In this example: <br />
+8. Top Large IO, In this example: <br />
 Top 3 Large IO with size greater than or equal 64kB, with 1hr duration
 </p>
 
 <pre>python trace-editor.py -toplargeio -file &lt;filename&gt; -offset 64 -devno 0 -duration 60 -top 3</pre>
 
 <p>
-8. Find most random write time range, In this example: <br />
+9. Find most random write time range, In this example: <br />
 Find a time range(min) where has most random write
 </p>
 
 <pre>python trace-editor.py -dir &lt;dirname&gt; -mostRandomWrite -duration 5 -devno 5 -top 3</pre>
 
 <p>
-9. Get characteristic info from a after-preprocessed trace(usually after you cut the original preprocessed trace, due to devno reason), In this example: <br />
+10. Get characteristic info from a after-preprocessed trace(usually after you cut the original preprocessed trace, due to devno reason), In this example: <br />
 You can get something like whisker plot info about write size, read size, time density, and % write, % read, % random write
 </p>
 
 <pre>python trace-editor.py -dir &lt;dirname&gt; -characteristic</pre>
 
 <p>
-10. Cut trace, in this example between timerange of minute 5 and minute 10
+11. Cut trace, in this example between timerange of minute 5 and minute 10
 </p>
 
 <pre>python trace-editor.py -cuttrace -file <filename> -timerange 5 10</pre>

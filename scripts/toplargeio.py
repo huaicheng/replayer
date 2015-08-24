@@ -43,17 +43,17 @@ def getTopLargeIO(tracefile, offset, devno, minutes, top = 1):
       if int(tok[1]) == devno:
         bsize = float(tok[3]) *  0.5 # (512 / 1024) kb
 
-        if bsize < 32:
+        if bsize <= 32:
           result[timeoffset][0] += 1
-        elif bsize < 64:
+        elif bsize <= 64:
           result[timeoffset][1] += 1
-        elif bsize < 128:
+        elif bsize <= 128:
           result[timeoffset][2] += 1
-        elif bsize < 256:
+        elif bsize <= 256:
           result[timeoffset][3] += 1
-        elif bsize < 512:
+        elif bsize <= 512:
           result[timeoffset][4] += 1
-        elif bsize < 1024:
+        elif bsize <= 1024:
           result[timeoffset][5] += 1
         else: # must be larger than 1024
           result[timeoffset][6] += 1

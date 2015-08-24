@@ -1,0 +1,10 @@
+gnore unimportant files
+*~
+*.pyc
+
+# ignore res dir
+resources/
+
+# ignore input output dir
+out*
+in*

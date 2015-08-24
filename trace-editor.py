@@ -25,6 +25,7 @@ import iopsimbalance
 import toplargeio
 import cuttrace
 import characteristic
+import traces_merger
 # end of import part
 
 # define global variables
@@ -42,7 +43,8 @@ if __name__ == '__main__':
   parser.add_argument("-preprocessUnixBlkTrace", help="preprocess the blkreplay trace into disksim ascii format", action='store_true')
   parser.add_argument("-breaktoraid", help="create a RAID-0 subtrace", action='store_true')
   parser.add_argument("-ioimbalance", help="check RAID IO Imbalance", action='store_true')
-  parser.add_argument("-combine", help="combine preprocessed traces inside a directory", action='store_true')
+  parser.add_argument("-combine", help="combine preprocessed traces inside a directory based on file name", action='store_true')
+  parser.add_argument("-merge", help="merge preprocessed traces inside a directory based on time", action='store_true')
   parser.add_argument("-toplargeio", help="get n top large io", action='store_true')
   parser.add_argument("-cuttrace", help="cut a trace", action='store_true')
   parser.add_argument("-getLargestIO", help="get largest IO", action='store_true')
@@ -92,6 +94,8 @@ if __name__ == '__main__':
     iopsimbalance.checkIOImbalance(filter_raid.createAllRaidList(args.file,args.ndisk,args.stripe), args.granularity)
   elif (args.combine):
     traces_combiner.combine(args.dir)
+  elif (args.merge):
+    traces_merger.merge(args.dir)
   elif args.mostLoaded or args.busiest or args.largestAverage or args.mostRandomWrite: #need combine
     if args.busiest:
       busy_load.checkCongestedTime(args.file, "1", args.devno, args.duration, args.top)

@@ -26,7 +26,7 @@ def getLargestIO(tracefile):
         
   print "largest: " + str(largest[1]) + " in time " + str(largest[0])
 
-def getTopLargeIO(tracefile, offset, devno, minutes, top = 1):
+def getTopLargeIO(tracefile, offset, devno, minutes, tfilter, top = 1):
   timerange = int(minutes * 60000000) #micro sec 
 
   result = {}
@@ -34,6 +34,11 @@ def getTopLargeIO(tracefile, offset, devno, minutes, top = 1):
   with open("in/" + tracefile) as f:
     for line in f:
       tok = map(str.lstrip, line.split(" "))
+      
+      if tok[4].strip() == "1" and tfilter.strip() == "write":
+        continue
+      if tok[4].strip() == "0" and tfilter.strip() == "read":
+        continue
     
       timeoffset = int(float(tok[0]) * 1000)/timerange
       

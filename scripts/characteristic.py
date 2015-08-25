@@ -58,8 +58,8 @@ def getTraceInfo(tracefile):
       if lastBlockNo != -1:
         if (lastBlockNo + lastBlockCount) != int(words[2]):
           randomWriteCount += 1
-        if lastBlockCount * 0.5 <= 32: #KB
-          small_random_writes += 1
+          if lastBlockCount * 0.5 <= 32: #KB
+            small_random_writes += 1
       lastBlockNo = int(words[2])
       lastBlockCount = int(words[3])
     elif ioType == 1:

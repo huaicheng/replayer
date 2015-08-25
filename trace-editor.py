@@ -13,6 +13,7 @@
 import sys
 import argparse
 from os import listdir
+from subprocess import call
 
 sys.path.insert(0, './scripts/')
 
@@ -26,6 +27,7 @@ import toplargeio
 import cuttrace
 import characteristic
 import traces_merger
+import trace_sanitizer
 # end of import part
 
 # define global variables
@@ -65,6 +67,7 @@ if __name__ == '__main__':
   parser.add_argument("-stripe", help="RAID stripe unit size in byte", type=int, default=4096)
   parser.add_argument("-granularity", help="granularity to check RAID IO imbalance in minutes", type=int, default=1)
   parser.add_argument("-timerange", help="time range to cut the trace", type=float, nargs = 2)
+  parser.add_argument("-sanitize", help="sanitize (incorporate contiguous + remove repeated reads)", action='store_true')
   args = parser.parse_args()
 
   # parse to request list
@@ -107,14 +110,17 @@ if __name__ == '__main__':
       busy_load.checkCongestedTime(args.file, "4", args.devno, args.duration, args.top)
   elif (args.characteristic):
     if (not args.file and args.dir):
+      call(["mkdir", "out/" + args.dir])
       for ftrace in listdir("in/" + args.dir):
         characteristic.getTraceInfo(args.dir + "/" + ftrace)
     else:
       characteristic.getTraceInfo(args.file)
   elif (args.toplargeio):
-    toplargeio.getTopLargeIO(args.file, args.offset, args.devno, args.duration, args.top)
+    toplargeio.getTopLargeIO(args.file, args.offset, args.devno, args.duration, args.filter, args.top)
   elif (args.cuttrace):
     cuttrace.cut(args.file, args.timerange[0], args.timerange[1], args.devno)
+  elif (args.sanitize):
+    trace_sanitizer.sanitize(args.file)
   elif (args.resize or args.rerate): #modify a trace
     with open("in/" + args.file) as f:
       for line in f:

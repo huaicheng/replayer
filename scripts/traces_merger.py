@@ -3,8 +3,6 @@ import argparse
 from os import listdir
 
 def merge(tracesdir):
-  print "aaaa"
-
   #variables
   resultlist = []
   dirname = "in/" + tracesdir

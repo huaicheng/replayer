@@ -9,7 +9,7 @@ def sanitize(tracefile):
 
   with open ("in/" + tracefile, "r") as myfile:
     tracein=myfile.read()
-    out.write(removeRepeatedReads(fuseContiguousIO(tracein)))
+    out.write(fitIOToDisk(removeRepeatedReads(fuseContiguousIO(tracein)),2147483648))
   
   out.close()
 
@@ -52,6 +52,15 @@ def removeRepeatedReads(tracein):
         has_been_read[int(tok[2]):int(tok[2]) + int(tok[3])] = int(tok[3]) * bitarray([True])
       
   return out
-      
+  
+def fitIOToDisk(tracein,disk_size = 2147483648): #by default 1TB
+    #initialize
+    out = ""
+    
+    for line in tracein.splitlines():
+        tok = map(str.lstrip, line.split(" ")) #time,devno,blkno,blkcount,flag-0 write/1 read
+        out += ("%s %s %s %s %s\n" % (tok[0], tok[1], str(int(tok[2]) % disk_size), tok[3], tok[4]))
+    
+    return out
     
   

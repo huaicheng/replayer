@@ -103,5 +103,11 @@ You can get something like whisker plot info about write size, read size, time d
 11. Cut trace, in this example between timerange of minute 5 and minute 10
 </p>
 
-<pre>python trace-editor.py -cuttrace -file <filename> -timerange 5 10</pre>
+<pre>python trace-editor.py -cuttrace -file &lt;filename&gt; -timerange 5 10</pre>
+
+<p>
+12. Sanitize the trace (incorporate contiguous IO + remove repeated reads)
+</p>
+
+<pre>python trace-editor.py -file &lt;filename&gt; -sanitize</pre>
 

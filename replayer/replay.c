@@ -11,7 +11,7 @@
 // compile: gcc concurrent.c -pthread
 
 // CONFIGURATION PART
-const int BLOCK_SIZE = 4096;
+const int BLOCK_SIZE = 512; //in bytes
 int numworkers = 1;
 char tracefile[] = "trace1.txt";
 int printlatency = 0; //print every io latency
@@ -97,12 +97,12 @@ void *performIO(){
         //printf("%lu %d %d\n",blkno[curtask],reqsize[curtask],reqflag[curtask]);
         //do the job
         if(reqflag[curtask] == 0){
-            if(pwrite(fd, buff, blkno[curtask], reqsize[curtask]) < 0){
+            if(pwrite(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
                 fprintf(stderr,"Cannot write!\n");
                 exit(1);
             }
         }else{
-            if(pread(fd, buff, blkno[curtask], reqsize[curtask]) < 0){
+            if(pread(fd, buff, reqsize[curtask], blkno[curtask) < 0){
                 fprintf(stderr,"Cannot Read!\n");
                 exit(1);
             }

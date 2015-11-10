@@ -34,6 +34,10 @@ def getTraceInfo(tracefile):
   lastBlockCount = 0
   
   #-------------
+  #total size
+  total_write_size = 0
+  total_read_size = 0
+  
   #size bucket
   write_sizebucket = [0] * 7 # 32, 64, 128, 256, 512, 1024, 1024+
   read_sizebucket = [0] * 7
@@ -53,6 +57,7 @@ def getTraceInfo(tracefile):
     words = line.split(" ")
     ioType = int(words[4])
     if ioType == 0:
+      total_write_size += (int(words[3]) * 0.5)
       writeCount+=1
       writeSize.append(int(words[3])*512)
       if lastBlockNo != -1:
@@ -63,6 +68,7 @@ def getTraceInfo(tracefile):
       lastBlockNo = int(words[2])
       lastBlockCount = int(words[3])
     elif ioType == 1:
+      total_read_size += (int(words[3]) * 0.5)
       readCount+=1
       readSize.append(int(words[3])*512)
     if float(words[0]) != -1:
@@ -89,8 +95,10 @@ def getTraceInfo(tracefile):
     #-----------------------------
   
   out.write("IO Count: "+str(ioCount) +"\n")
-  out.write("% Read: "+"{0:.2f}".format((float(readCount)/float(ioCount))*100) +"\n")
+  out.write("% Read: "+"{0:.2f}".format((float(readCount)/float(ioCount))*100) +"\n") 
+  out.write("Read (KB) / sec: "+"{0:.2f}".format(float(total_read_size) / (float(endtrace_time-starttrace_time) / 1000)) +"\n")
   out.write("% Write: "+"{0:.2f}".format((float(writeCount)/float(ioCount))*100) +"\n")
+  out.write("Write (KB) / sec: "+"{0:.2f}".format(float(total_write_size) / (float(endtrace_time-starttrace_time) / 1000)) +"\n")
   out.write("% randomWrite in Write: "+"{0:.2f}".format((float(randomWriteCount)/float(writeCount))*100) +"\n")
   out.write("\n")
   

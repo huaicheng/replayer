@@ -68,6 +68,7 @@ if __name__ == '__main__':
   parser.add_argument("-granularity", help="granularity to check RAID IO imbalance in minutes", type=int, default=1)
   parser.add_argument("-timerange", help="time range to cut the trace", type=float, nargs = 2)
   parser.add_argument("-sanitize", help="sanitize (incorporate contiguous + remove repeated reads)", action='store_true')
+  parser.add_argument("-maxsize", help="maximum request size", type=int, default=1099511627776)
   args = parser.parse_args()
 
   # parse to request list
@@ -120,7 +121,11 @@ if __name__ == '__main__':
   elif (args.cuttrace):
     cuttrace.cut(args.file, args.timerange[0], args.timerange[1], args.devno)
   elif (args.sanitize):
-    trace_sanitizer.sanitize(args.file)
+    if not args.dir:
+        trace_sanitizer.sanitize(args.file,args.maxsize)
+    else:
+        for ftrace in listdir("in/" + args.dir):
+            trace_sanitizer.sanitize(ftrace,args.maxsize)
   elif (args.resize or args.rerate): #modify a trace
     with open("in/" + args.file) as f:
       for line in f:

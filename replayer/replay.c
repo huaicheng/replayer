@@ -97,12 +97,12 @@ void *performIO(){
         //printf("%lu %d %d\n",blkno[curtask],reqsize[curtask],reqflag[curtask]);
         //do the job
         if(reqflag[curtask] == 0){
-            if(pwrite(fd, buff, 4096, 4096) < 0){
+            if(pwrite(fd, buff, blkno[curtask], reqsize[curtask]) < 0){
                 fprintf(stderr,"Cannot write!\n");
                 exit(1);
             }
         }else{
-            if(pread(fd, buff, 4096, 4096) < 0){
+            if(pread(fd, buff, blkno[curtask], reqsize[curtask]) < 0){
                 fprintf(stderr,"Cannot Read!\n");
                 exit(1);
             }

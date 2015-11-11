@@ -111,3 +111,13 @@ You can get something like whisker plot info about write size, read size, time d
 
 <pre>python trace-editor.py -file &lt;filename&gt; -sanitize</pre>
 
+<hr />
+
+<h1> Simple Replayer </h1>
+
+<p> 
+Use this to replay a trace (must be in disksim format) <br />
+To compile: gcc replay.c -pthread <br /><br />
+With the default C compilation, let's say it results in a.out <br />
+Then run it with: ./a.out &lt;target_device&gt; <br /><br />
+To configure, open the source code and edit the global variables in CONFIGURATION PART

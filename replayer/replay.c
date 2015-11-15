@@ -96,7 +96,7 @@ void arrangeIO(char **requestarray){
         
         strtok(io," "); //1. request arrival time
         strtok(NULL," "); //2. device number
-        blkno[i] = atoi(strtok(NULL," ")) * BLOCK_SIZE; //3. block number
+        blkno[i] = (long)atoi(strtok(NULL," ")) * BLOCK_SIZE; //3. block number
         reqsize[i] = atoi(strtok(NULL," ")) * BLOCK_SIZE; //4. request size
         reqflag[i] = atoi(strtok(NULL," ")); //5. request flags
     }
@@ -120,12 +120,12 @@ void *performIO(){
         //do the job
         if(reqflag[curtask] == 0){
             if(pwrite(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
-                fprintf(stderr,"Cannot write!\n");
+                fprintf(stderr,"Cannot write size %d to offset %lu!\n",(reqsize[curtask] / 512), (blkno[curtask] / 512));
                 exit(1);
             }
         }else{
             if(pread(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
-                fprintf(stderr,"Cannot Read!\n");
+                fprintf(stderr,"Cannot read size %d to offset %lu!\n",(reqsize[curtask] / 512), (blkno[curtask] / 512));
                 exit(1);
             }
         }

@@ -17,8 +17,13 @@ def resize(reqlist, times):
 
 # input: request list (list), modify the size x rate times (float)
 def modifyRate(reqlist, rate):
-  for request in reqlist:
-    request[0] = '%.3f' % (rate * float(request[0]))
+  i = 0
+  while i < len(reqlist):
+    if float(reqlist[i][0]) * rate > 300000:
+      del reqlist[i:len(reqlist)]
+      break
+    reqlist[i][0] = '%.3f' % (rate * float(reqlist[i][0]))
+    i += 1
   return reqlist
   
 def printRequestList(requestlist, filename):

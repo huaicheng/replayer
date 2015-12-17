@@ -20,8 +20,8 @@
 static int const BLOCK_SIZE = 512; //1 block = n bytes
 static int const LARGEST_REQUEST_SIZE = 65536; //blocks
 static int const MEM_ALIGN = 512; //bytes
-int numworkers = 200; // =number of threads
-char tracefile[] = "T7-disk0-cut_smrmultires.txt"; //trace file to read as input
+int numworkers = 2; // =number of threads
+char tracefile[] = "trace1.txt"; //trace file to read as input
 int printlatency = 1; //print every io latency
 int maxio = 1000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;
@@ -31,6 +31,7 @@ int fd;
 int totalio;
 int jobtracker = 0;
 int latecount = 0;
+int slackcount = 0;
 void *buff;
 uint64_t starttime;
 
@@ -57,6 +58,24 @@ void prepareMetrics(){
             exit(1);
         }
     }
+}
+
+void cleanCache(){
+    printf("Flush the on-disk cache...\n");
+    void* cleanbuff;
+    if (posix_memalign(&cleanbuff,MEM_ALIGN,500 * 1024 * 1024)){
+        fprintf(stderr,"memory allocation for cleaning failed\n");
+        exit(1);
+    }
+    int i;
+    for(i = 0; i < 2; i++){
+        if(pread(fd, cleanbuff, 500 * 1024 * 1024, 966367641600) < 0){
+            fprintf(stderr,"Cannot read 500MB for trace cleaning!\n");
+            exit(1);
+        }
+    }
+    free(cleanbuff);
+    printf("Flushing finished!\n");
 }
 
 int readTrace(char ***req){
@@ -136,7 +155,10 @@ void *performIO(){
     //int howmany = 0;
     int curtask;
     int mylatecount = 0;
+    int myslackcount = 0;
     struct timeval t1,t2;
+    
+    useconds_t sleep_time;
 
     while(jobtracker < totalio){
         //firstly save the task to avoid any possible contention later
@@ -148,7 +170,11 @@ void *performIO(){
             gettimeofday(&t1,NULL); //get current time
             uint64_t elapsedtime = t1.tv_sec * 1000000 + t1.tv_usec - starttime;
             if(elapsedtime <= timestamp[curtask] * 1000){
-                usleep((uint64_t)(timestamp[curtask] * 1000) - elapsedtime);
+                sleep_time = (useconds_t)(timestamp[curtask] * 1000) - elapsedtime;
+                if(sleep_time > 100){
+                    myslackcount++;
+                }    
+                usleep(sleep_time);
             }else{ //I am late
                 mylatecount++;
             }
@@ -177,6 +203,7 @@ void *performIO(){
     }
     
     atomicAdd(&latecount, mylatecount);
+    atomicAdd(&slackcount, myslackcount);
     
     return NULL;
 }
@@ -226,9 +253,10 @@ void operateWorkers(){
     //pthread_join(track_thread, NULL); //progress
     gettimeofday(&t2,NULL);
     totaltime = (t2.tv_sec - t1.tv_sec) * 1000.0 + (t2.tv_usec - t1.tv_usec) / 1000.0;
-    printf("Total run time: %.3f ms\n",totaltime);
+    printf("\nTotal run time: %.3f ms\n",totaltime);
     if(respecttime == 1){
         printf("Late rate: %.2f%%\n",100 * (float)latecount / totalio);
+        printf("Slack rate: %.2f%%\n",100 * (float)slackcount / totalio);
     }
     
     fclose(metrics);
@@ -266,7 +294,10 @@ int main(int argc, char *argv[]) {
     }
 
     prepareMetrics();
+    cleanCache();
     operateWorkers();
 
+    free(buff);
+    
     return 0;
 }

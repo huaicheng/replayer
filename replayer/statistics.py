@@ -3,37 +3,57 @@
 #author          :Vincentius Martin
 #==============================================================================
 
+from operator import itemgetter
+
 if __name__ == '__main__':
+    sorted_io = []
+
     readbandwidth = 0
     readlatency = 0
     totalread = 0
     writebandwidth = 0
     writelatency = 0
     totalwrite = 0
-    lasttime = 0
+    
+    last_io_time = -1
+    last_write_time = -1
+    inter_io_time = 0
+    inter_write_time = 0
 
     with open("replay_metrics.txt") as f:
         for line in f:
             tok = map(str.strip, line.split(","))
-            if (tok[3] == '1'):
-                readbandwidth += (float(tok[2]) * 0.5) / (float(tok[4]) / 1000)
-                readlatency += float(tok[4])
-                totalread += 1
-            else:
-                writebandwidth += (float(tok[2]) * 0.5) / (float(tok[4]) / 1000)
-                writelatency += float(tok[4])
-                totalwrite += 1
-                
-            lasttime = float(tok[0])
+            sorted_io.append([float(tok[0]),int(tok[1]),float(tok[2]),int(tok[3]),float(tok[4])])
+    
+    
+    for io in sorted(sorted_io, key=itemgetter(0)):
+        if (io[3] == 1): #read
+            readbandwidth += (io[2] * 0.5) / (io[4] / 1000)
+            readlatency += io[4]
+            totalread += 1
+        else: #write
+            writebandwidth += (io[2] * 0.5) / (io[4] / 1000)
+            writelatency += io[4]
+            totalwrite += 1
+            if last_write_time != -1:
+                inter_write_time += io[0] - last_write_time
+            last_write_time = io[0]
+            
+        if last_io_time != -1:
+            inter_io_time += io[0] - last_io_time
+        last_io_time = io[0]
     
     print "==========Statistics=========="
-    print "Last time " + str(lasttime)
+    print "Last time " + str(last_io_time)
+    print "IO inter arrival time average " + "%.2f" % (inter_io_time / (totalread + totalwrite - 1))
+    print "Write inter arrival time average " + "%.2f" % (inter_write_time / (totalwrite - 1))
     print "Total writes: " + str(totalwrite)
     print "Total reads: " + str(totalread)
-    print "Write iops: " + "%.2f" % (float(totalwrite) / (lasttime / 1000))
-    print "Read iops: " + "%.2f" % (float(totalread) / (lasttime / 1000))          
+    print "Write iops: " + "%.2f" % (float(totalwrite) / (last_io_time / 1000))
+    print "Read iops: " + "%.2f" % (float(totalread) / (last_io_time / 1000))          
     print "Average write bandwidth: " + "%.2f" % (writebandwidth / totalwrite) + " KB/s"
     print "Average write latency: " + "%.2f" % (writelatency / totalwrite) + " ms"
     print "Average read bandwidth: " + "%.2f" % (readbandwidth / totalread) + " KB/s"
     print "Average read latency: " + "%.2f" % (readlatency / totalread) + " ms"
     print "=============================="
+            

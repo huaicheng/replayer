@@ -10,7 +10,8 @@
 #precondition    :ordered
 #==============================================================================
 
-import math
+import math,numpy
+from collections import defaultdict
 
 def getTraceInfo(tracefile):
   out = open("out/" + tracefile + "-characteristic.txt", 'w')
@@ -50,6 +51,9 @@ def getTraceInfo(tracefile):
   small_random_writes = 0
   #-------------
   
+  #written block number
+  written_block = defaultdict(int)
+  
   out.write("Title: "+tracefile+"\n")
 
   for line in traceIn:
@@ -87,6 +91,12 @@ def getTraceInfo(tracefile):
       read_sizebucket[sizebucket_slot] += 1
     #---end of sizebucket part---
     
+    #---start of written block part---
+    if ioType == 0: #if write
+      for writtenblk in range(int(words[2]), int(words[2]) + int(words[3])):
+        written_block[writtenblk] += 1
+    #---end of written block part---
+    
     #Note start and end trace time
     if starttrace_time == None:
       starttrace_time = float(words[0])
@@ -94,11 +104,16 @@ def getTraceInfo(tracefile):
     endtrace_time = float(words[0])
     #-----------------------------
   
+  totalsec = float(endtrace_time-starttrace_time) / 1000
+  
   out.write("IO Count: "+str(ioCount) +"\n")
-  out.write("% Read: "+"{0:.2f}".format((float(readCount)/float(ioCount))*100) +"\n") 
-  out.write("Read (KB) / sec: "+"{0:.2f}".format(float(total_read_size) / (float(endtrace_time-starttrace_time) / 1000)) +"\n")
-  out.write("% Write: "+"{0:.2f}".format((float(writeCount)/float(ioCount))*100) +"\n")
-  out.write("Write (KB) / sec: "+"{0:.2f}".format(float(total_write_size) / (float(endtrace_time-starttrace_time) / 1000)) +"\n")
+  out.write("IO per second: "+ "%.2f" % (float(ioCount) / totalsec) +"\n")
+  out.write("% Read: "+ "%.2f" % ((float(readCount)/float(ioCount))*100) +"\n") 
+  out.write("Read (KB) / sec: "+ "%.2f" % (float(total_read_size) / totalsec) +"\n")
+  out.write("Reads per second: "+"%.2f" % (float(readCount) / totalsec) +"\n")
+  out.write("% Write: "+ "%.2f" % ((float(writeCount)/float(ioCount))*100) +"\n")
+  out.write("Write (KB) / sec: "+ "%.2f" %(float(total_write_size) / totalsec) +"\n")
+  out.write("Writes per second: "+"%.2f" % (float(writeCount) / totalsec) +"\n")
   out.write("% randomWrite in Write: "+"{0:.2f}".format((float(randomWriteCount)/float(writeCount))*100) +"\n")
   out.write("\n")
   
@@ -115,9 +130,11 @@ def getTraceInfo(tracefile):
   out.write("Score (#bigWrites/#smallWrites): %s\n" % "{0:.2f}".format(float(sum(write_sizebucket[1:len(write_sizebucket)])) / write_sizebucket[0]))
   out.write("\n")
 
+#---------------------------
   writeSize.sort()
   readSize.sort()
   timeInterval.sort()
+  overwritten_blk_count = numpy.array(written_block.values())
 
   out.write("---Whisker plot information: min, 25%, med, 75%, max---\n")
   out.write("Read size (Byte) : "+ str(readSize[0]) + ", "+ str(readSize[(readCount-1)/4]) + ", " +str(readSize[(readCount-1)/2]) + ", "+str(readSize[3*(readCount-1)/4])+", "+str(readSize[readCount-1]) + "\n")
@@ -126,5 +143,10 @@ def getTraceInfo(tracefile):
 
   out.write("Time interval (ms) : "+ "{0:.2f}".format(timeInterval[0]) + ", "+ "{0:.2f}".format(timeInterval[(len(timeInterval)-1)/4]) + ", " +"{0:.2f}".format(timeInterval[(len(timeInterval)-1)/2]) + ", "+"{0:.2f}".format(timeInterval[3*(len(timeInterval)-1)/4])+", "+"{0:.2f}".format(timeInterval[len(timeInterval)-1]) +"\n")
 
+  out.write("Number of writes to the same block: " + str(numpy.percentile(overwritten_blk_count,0)) + ", " 
+                                                   + str(numpy.percentile(overwritten_blk_count,25)) + ", " 
+                                                   + str(numpy.percentile(overwritten_blk_count,50)) + ", " 
+                                                   + str(numpy.percentile(overwritten_blk_count,75)) + ", " 
+                                                   + str(numpy.percentile(overwritten_blk_count,99)) + "\n")
   out.close()
   traceIn.close()

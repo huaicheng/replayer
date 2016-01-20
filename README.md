@@ -35,6 +35,10 @@ Type of traces:<br/>
 Resize all requests size by 2x and rerate all request arrival time by 0.5x : <br />
 </p>
 <pre>python trace-editor.py -file &lt;tracename&gt; -resize 2 -rerate 0.5</pre>
+<p>
+Insert a 4KB read (iotype == 1) for every 1000ms: <br />
+</p>
+<pre>python trace-editor.py -file &lt;tracename&gt; -insert -size 4 -iotype 1 -interval 1000</pre>
 
 <p>
 3. Combine traces (Precondition: The traces must have been preprocessed).<br />

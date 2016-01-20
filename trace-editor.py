@@ -63,12 +63,16 @@ if __name__ == '__main__':
   parser.add_argument("-top", help="top n", type=int, default=1)
   parser.add_argument("-resize", help="resize a trace", type=float, default=1.0)
   parser.add_argument("-rerate", help="rerate a trace", type=float, default=1.0)
+  parser.add_argument("-insert", help="insert a 'size' KB 'iotype' request every 'interval' ms", action='store_true')
   parser.add_argument("-ndisk", help="n disk for RAID", type=int, default=2)
   parser.add_argument("-stripe", help="RAID stripe unit size in byte", type=int, default=4096)
   parser.add_argument("-granularity", help="granularity to check RAID IO imbalance in minutes", type=int, default=1)
   parser.add_argument("-timerange", help="time range to cut the trace", type=float, nargs = 2)
   parser.add_argument("-sanitize", help="sanitize (incorporate contiguous + remove repeated reads)", action='store_true')
   parser.add_argument("-maxsize", help="maximum request size", type=int, default=1099511627776)
+  parser.add_argument("-size", help="size in KB", type=int, default=4)
+  parser.add_argument("-iotype", help="1 for read and 0 for write", type=int, default=0)
+  parser.add_argument("-interval", help="time interval in ms", type=int, default=1000)
   args = parser.parse_args()
 
   # parse to request list
@@ -130,11 +134,13 @@ if __name__ == '__main__':
     with open("in/" + args.file) as f:
       for line in f:
         requestlist.append(line.rstrip().split(" "))
-    if args.resize != 1.0 or args.rerate!= 1.0:
+    if args.resize != 1.0 or args.rerate!= 1.0 or args.insert:
       if (args.resize != 1.0):
         requestlist = trace_modifier.resize(requestlist,args.resize)     
       if (args.rerate != 1.0):
-        requestlist = trace_modifier.modifyRate(requestlist,args.rerate)  
+        requestlist = trace_modifier.modifyRate(requestlist,args.rerate) 
+      if args.insert:
+        requestlist = trace_modifier.insertIO(requestlist,args.size,args.interval,args.iotype) 
       trace_modifier.printRequestList(requestlist, args.file)
 
   

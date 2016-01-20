@@ -21,7 +21,7 @@ static int const BLOCK_SIZE = 512; //1 block = n bytes
 static int const LARGEST_REQUEST_SIZE = 65536; //blocks
 static int const MEM_ALIGN = 512; //bytes
 int numworkers = 32; // =number of threads
-char tracefile[] = "T3-disk0-cut.trace"; //trace file to read as input
+char tracefile[] = "test.trace"; //trace file to read as input
 int printlatency = 1; //print every io latency
 int maxio = 1000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;
@@ -36,6 +36,7 @@ int slackcount = 0;
 void *buff;
 uint64_t starttime;
 
+char **reqid;
 long *blkno; //TODO: devise better way to save blkno,size,flag
 int *reqsize;
 int *reqflag;
@@ -173,6 +174,7 @@ void arrangeIO(char **requestarray){
     reqsize = malloc(totalio * sizeof(int));
     reqflag = malloc(totalio * sizeof(int));
     timestamp = malloc(totalio * sizeof(float));
+    reqid = malloc(totalio * sizeof(char*));
     
     if(blkno == NULL || reqsize == NULL || reqflag == NULL || timestamp == NULL){
         fprintf(stderr,"Error malloc in arrangeIO!\n");
@@ -188,7 +190,14 @@ void arrangeIO(char **requestarray){
         }
         strcpy(io,requestarray[i]);
         
-        timestamp[i] = atof(strtok(io," ")); //1. request arrival time
+        char* cur_id = strtok(io," ");
+        if ((reqid[i] = malloc((strlen(cur_id) + 1) * sizeof(char))) == NULL){
+            fprintf(stderr,"Error malloc in arrangeIO!\n");
+            exit(1);
+        }
+        strcpy(reqid[i],cur_id);
+        
+        timestamp[i] = atof(strtok(NULL," ")); //1. request arrival time
         strtok(NULL," "); //2. device number
         blkno[i] = (long)atoi(strtok(NULL," ")) * BLOCK_SIZE; //3. block number
         reqsize[i] = atoi(strtok(NULL," ")) * BLOCK_SIZE; //4. request size
@@ -214,7 +223,7 @@ void *performIO(){
     useconds_t sleep_time;
 
     while(jobtracker < totalio){
-        //firstly save the task to avoid any possible contention later
+        //firstly save the task to avoid any possible contention later, do in mutex
         assert(pthread_mutex_lock(&lock) == 0);
         curtask = jobtracker;
         jobtracker++;
@@ -250,9 +259,9 @@ void *performIO(){
         }
         gettimeofday(&t2,NULL);
         float iotime = (t2.tv_sec - t1.tv_sec) * 1000.0 + (t2.tv_usec - t1.tv_usec) / 1000.0;
-        if(printlatency == 1){
+        if(printlatency == 1 && strstr(reqid[curtask],"IO") != NULL){
             assert(pthread_mutex_lock(&lock) == 0);
-            fprintf(metrics,"%.3f,%lu,%d,%d,%.3f\n",timestamp[curtask],blkno[curtask] / 512,reqsize[curtask] / 512,reqflag[curtask],iotime);
+            fprintf(metrics,"%.3f,%lu,%d,%d,%.3f,%s\n",timestamp[curtask], blkno[curtask] / 512, reqsize[curtask] / 512, reqflag[curtask], iotime, reqid[curtask]);
             assert(pthread_mutex_unlock(&lock) == 0);
         }
     }

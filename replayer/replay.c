@@ -11,21 +11,25 @@
 #include <pthread.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <linux/fs.h>
+#include <sys/ioctl.h>
 
 // compile: gcc replay.c -pthread
 
-//Note: all sizes are in block (1 block = BLOCK_SIZE bytes)
+//Note: all sizes are in block (1 block = block_size bytes)
 
 // CONFIGURATION PART
-static int const BLOCK_SIZE = 512; //1 block = n bytes
-static int const LARGEST_REQUEST_SIZE = 65536; //blocks
-static int const MEM_ALIGN = 512; //bytes
+
+
+int LARGEST_REQUEST_SIZE = 65536; //blocks
+int MEM_ALIGN = 4096; //bytes
 int numworkers = 32; // =number of threads
-char tracefile[] = "T3-disk0-cut.trace"; //trace file to read as input
 int printlatency = 1; //print every io latency
 int maxio = 1000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;
 int check_cache = 1;
+int block_size = 512; 
+int64_t DISK_SIZE = 0;
 
 // ANOTHER GLOBAL VARIABLES
 int fd;
@@ -36,7 +40,7 @@ int slackcount = 0;
 void *buff;
 uint64_t starttime;
 
-long *blkno; //TODO: devise better way to save blkno,size,flag
+int64_t *blkno; //TODO: devise better way to save blkno,size,flag
 int *reqsize;
 int *reqflag;
 float *timestamp;
@@ -47,14 +51,20 @@ pthread_mutex_t lock;
 
 /*=============================================================*/
 
+int64_t get_disksz(int devfd)
+{
+    int64_t sz;
+    ioctl(devfd, BLKGETSIZE64, &sz);
+    return sz;
+}
+
 //check if cache is disabled, the result should be around 5ms for read and write
-void checkCache(){ 
+void checkCache(int devfd){ 
     struct timeval t1,t2;
     void *checkingbuff;
     float iotime = 0;
     int numiter = 100;
     int CHECK_SIZE = 4096;
-    static long const DISK_SIZE = 998579896320;
     int BLOCK_RANGE = DISK_SIZE / CHECK_SIZE;
 
     printf("Checking cache by doing reads...\n");
@@ -124,6 +134,7 @@ void prepareMetrics(){
     }
     if(printlatency == 1){
         metrics = fopen("replay_metrics.txt", "w+");
+        
         if(!metrics){
             fprintf(stderr,"Error creating metrics file!\n");
             exit(1);
@@ -131,9 +142,12 @@ void prepareMetrics(){
     }
 }
 
-int readTrace(char ***req){
+int readTrace(char ***req, char *tracefile){
     //first, read the number of lines
     FILE *trace = fopen(tracefile,"r");
+    if (trace == NULL) {
+        printf("Cannot open trace file: %s!\n", tracefile);
+    }
     int ch;
     int numlines = 0;
     
@@ -190,10 +204,13 @@ void arrangeIO(char **requestarray){
         
         timestamp[i] = atof(strtok(io," ")); //1. request arrival time
         strtok(NULL," "); //2. device number
-        blkno[i] = (long)atoi(strtok(NULL," ")) * BLOCK_SIZE; //3. block number
-        reqsize[i] = atoi(strtok(NULL," ")) * BLOCK_SIZE; //4. request size
+        blkno[i] = (long)atoi(strtok(NULL," ")) * block_size; //3. block number
+        blkno[i] %= DISK_SIZE;
+        reqsize[i] = atoi(strtok(NULL," ")) * block_size; //4. request size
         reqflag[i] = atoi(strtok(NULL," ")); //5. request flags
         free(io);
+
+        //printf("%.2f,%ld,%d,%d\n", timestamp[i], blkno[i], reqsize[i],reqflag[i]);
     }
 }
 
@@ -249,10 +266,19 @@ void *performIO(){
             }
         }
         gettimeofday(&t2,NULL);
-        float iotime = (t2.tv_sec - t1.tv_sec) * 1000.0 + (t2.tv_usec - t1.tv_usec) / 1000.0;
+        /* Coperd: I/O latency in us */
+        int iotime = (t2.tv_sec - t1.tv_sec) * 1e6 + (t2.tv_usec - t1.tv_usec);
         if(printlatency == 1){
             assert(pthread_mutex_lock(&lock) == 0);
-            fprintf(metrics,"%.3f,%lu,%d,%d,%.3f\n",timestamp[curtask],blkno[curtask] / 512,reqsize[curtask] / 512,reqflag[curtask],iotime);
+            /* 
+             * Coperd: keep consistent with fio latency log format:
+             * 1: timestamp in ms
+             * 2: latency in us
+             * 3: r/w type [0 for w, 1 for r] (this is opposite of fio)
+             * 4: I/O size in bytes
+             * 5: offset in bytes
+             */
+            fprintf(metrics,"%.3f,%d,%d,%d,%ld\n",timestamp[curtask], iotime, reqflag[curtask], reqsize[curtask], blkno[curtask]);
             assert(pthread_mutex_unlock(&lock) == 0);
         }
     }
@@ -291,7 +317,7 @@ void operateWorkers(){
         fprintf(stderr,"Error malloc thread!\n");
         exit(1);
     }
-    //pthread_t track_thread; //progress
+    pthread_t track_thread; //progress
     
     assert(pthread_mutex_init(&lock, NULL) == 0);
     
@@ -301,11 +327,11 @@ void operateWorkers(){
     for(x = 0; x < numworkers; x++){
         pthread_create(&tid[x], NULL, performIO, NULL);
     }
-    //pthread_create(&track_thread, NULL, printProgress, NULL); //progress
+    pthread_create(&track_thread, NULL, printProgress, NULL); //progress
     for(x = 0; x < numworkers; x++){
         pthread_join(tid[x], NULL);
     }
-    //pthread_join(track_thread, NULL); //progress
+    pthread_join(track_thread, NULL); //progress
     gettimeofday(&t2,NULL);
     totaltime = (t2.tv_sec - t1.tv_sec) * 1000.0 + (t2.tv_usec - t1.tv_usec) / 1000.0;
     printf("==============================\n");
@@ -326,35 +352,41 @@ int main(int argc, char *argv[]) {
     char device[64];
     char **request;
     
-    if (argc <= 1){
-        printf("Please specify device name\n");
+    if (argc != 3){
+        printf("Usage: ./replayer /dev/md0 tracefile\n");
         exit(1);
     }else{
+        printf("%s\n", argv[1]);
         sprintf(device,"%s",argv[1]);
+        printf("Disk ==> %s\n", device);
     }
-    
-    // read the trace before everything else
-    totalio = readTrace(&request);
-    arrangeIO(request);
-    
+
     // start the disk part
     fd = open(device, O_DIRECT | O_SYNC | O_RDWR);
     if(fd < 0) {
         fprintf(stderr,"Cannot open %s\n", device);
         exit(1);
     }
+
+    DISK_SIZE = get_disksz(fd);
     
-    if (posix_memalign(&buff,MEM_ALIGN,LARGEST_REQUEST_SIZE * BLOCK_SIZE)){
+    if (posix_memalign(&buff,MEM_ALIGN,LARGEST_REQUEST_SIZE * block_size)){
         fprintf(stderr,"memory allocation failed\n");
         exit(1);
     }
 
+    // read the trace before everything else
+    totalio = readTrace(&request, argv[2]);
+    arrangeIO(request);
+
     //check cache if needed
     if(check_cache == 1){
-        checkCache();
+        checkCache(fd);
     }
     cleanCache();
+    printf("After cleancache\n");
     prepareMetrics();
+    printf("After prepareMetrics\n");
     operateWorkers();
 
     free(buff);

@@ -28,7 +28,7 @@ int printlatency = 1; //print every io latency
 int maxio = 1000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;
 int check_cache = 1;
-int block_size = 512; 
+int block_size = 4096; 
 int64_t DISK_SIZE = 0;
 
 // ANOTHER GLOBAL VARIABLES
@@ -65,7 +65,7 @@ void checkCache(int devfd){
     float iotime = 0;
     int numiter = 100;
     int CHECK_SIZE = 4096;
-    int BLOCK_RANGE = DISK_SIZE / CHECK_SIZE;
+    int BLOCK_RANGE = DISK_SIZE/ 2 / CHECK_SIZE;
 
     printf("Checking cache by doing reads...\n");
     
@@ -260,7 +260,8 @@ void *performIO(){
                 exit(1);
             }
         }else{
-            if(pread(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
+            //if(pread(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
+            if(syscall(548, fd, buff, reqsize[curtask], blkno[curtask]) < 0){
                 fprintf(stderr,"Cannot read size %d to offset %lu!\n",(reqsize[curtask] / 512), (blkno[curtask] / 512));
                 exit(1);
             }

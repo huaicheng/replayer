@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
@@ -22,13 +23,13 @@
 
 
 int LARGEST_REQUEST_SIZE = 65536; //blocks
-int MEM_ALIGN = 4096; //bytes
+int MEM_ALIGN = 4096*8; //bytes
 int numworkers = 32; // =number of threads
 int printlatency = 1; //print every io latency
 int maxio = 1000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;
 int check_cache = 1;
-int block_size = 4096; 
+int block_size = 512; 
 int64_t DISK_SIZE = 0;
 
 // ANOTHER GLOBAL VARIABLES
@@ -55,6 +56,7 @@ int64_t get_disksz(int devfd)
 {
     int64_t sz;
     ioctl(devfd, BLKGETSIZE64, &sz);
+    printf("Disk size is %"PRId64" MB\n", sz/1024/1024);
     return sz;
 }
 
@@ -65,17 +67,17 @@ void checkCache(int devfd){
     float iotime = 0;
     int numiter = 100;
     int CHECK_SIZE = 4096;
-    int BLOCK_RANGE = DISK_SIZE/ 2 / CHECK_SIZE;
+    int64_t BLOCK_RANGE = DISK_SIZE/ CHECK_SIZE;
 
     printf("Checking cache by doing reads...\n");
-    
+
     if (posix_memalign(&checkingbuff,MEM_ALIGN,CHECK_SIZE)){
         fprintf(stderr,"memory allocation for cache checking failed\n");
         exit(1);
     }
-    
+
     int i;
-    
+
     // check read first
     for(i = 0; i < numiter; i++){
         gettimeofday(&t1,NULL); //reset the start time to before start doing the job
@@ -87,12 +89,12 @@ void checkCache(int devfd){
         iotime += (t2.tv_sec - t1.tv_sec) * 1000.0 + (t2.tv_usec - t1.tv_usec) / 1000.0;
     }
     printf("Average 4KB read time: %.3fms\n", iotime / numiter);
-    
+
     //reset io time
     iotime = 0.0;
-    
+
     printf("Checking cache by doing writes...\n");
-    
+
     // check write after that
     for(i = 0; i < numiter; i++){
         gettimeofday(&t1,NULL); //reset the start time to before start doing the job
@@ -104,8 +106,8 @@ void checkCache(int devfd){
         iotime += (t2.tv_sec - t1.tv_sec) * 1000.0 + (t2.tv_usec - t1.tv_usec) / 1000.0;
     }
     printf("Average 4KB write time: %.3fms\n", iotime / numiter);
-    
-    
+
+
     free(checkingbuff);
     printf("==============================\n");
 }
@@ -127,14 +129,14 @@ void cleanCache(){
     free(cleanbuff);
 }
 
-void prepareMetrics(){
+void prepareMetrics(char *logfile){
     if(printlatency == 1 && totalio > maxio){
         fprintf(stderr, "Too many IO in the trace file!\n");
         exit(1);
     }
     if(printlatency == 1){
-        metrics = fopen("replay_metrics.txt", "w+");
-        
+        metrics = fopen(logfile, "w");
+
         if(!metrics){
             fprintf(stderr,"Error creating metrics file!\n");
             exit(1);
@@ -150,14 +152,14 @@ int readTrace(char ***req, char *tracefile){
     }
     int ch;
     int numlines = 0;
-    
+
     while(!feof(trace)){
         ch = fgetc(trace);
         if(ch == '\n'){
             numlines++;
         }
     }
-    
+
     rewind(trace);
 
     //then, start parsing
@@ -165,7 +167,7 @@ int readTrace(char ***req, char *tracefile){
         fprintf(stderr,"Error in memory allocation\n");
         exit(1);
     }
-    
+
     char line[100]; //assume it will not exceed 100 chars
     int i = 0;
     while(fgets(line, sizeof(line), trace) != NULL){
@@ -178,21 +180,21 @@ int readTrace(char ***req, char *tracefile){
         i++;
     }
     fclose(trace);
-    
+
     return numlines;
 }
 
 void arrangeIO(char **requestarray){
-    blkno = malloc(totalio * sizeof(long));
+    blkno = malloc(totalio * sizeof(int64_t));
     reqsize = malloc(totalio * sizeof(int));
     reqflag = malloc(totalio * sizeof(int));
     timestamp = malloc(totalio * sizeof(float));
-    
+
     if(blkno == NULL || reqsize == NULL || reqflag == NULL || timestamp == NULL){
         fprintf(stderr,"Error malloc in arrangeIO!\n");
         exit(1);
     }
-    
+
     int i = 0;
     for(i = 0; i < totalio; i++){
         char *io = malloc((strlen(requestarray[i]) + 1) * sizeof(char));
@@ -201,11 +203,14 @@ void arrangeIO(char **requestarray){
             exit(1);
         }
         strcpy(io,requestarray[i]);
-        
+
         timestamp[i] = atof(strtok(io," ")); //1. request arrival time
         strtok(NULL," "); //2. device number
-        blkno[i] = (long)atoi(strtok(NULL," ")) * block_size; //3. block number
+        blkno[i] = (int64_t)atoll(strtok(NULL, " ")) % DISK_SIZE;
+        blkno[i] *= block_size; //3. block number
         blkno[i] %= DISK_SIZE;
+        if (blkno[i] < 0 || blkno[i] >= DISK_SIZE)
+            printf("Offset %"PRId64" is larger than disk size OR NEGATIVE!\n", blkno[i]);
         reqsize[i] = atoi(strtok(NULL," ")) * block_size; //4. request size
         reqflag[i] = atoi(strtok(NULL," ")); //5. request flags
         free(io);
@@ -227,7 +232,7 @@ void *performIO(){
     int mylatecount = 0;
     int myslackcount = 0;
     struct timeval t1,t2;
-    
+
     useconds_t sleep_time;
 
     while(jobtracker < totalio){
@@ -236,7 +241,7 @@ void *performIO(){
         curtask = jobtracker;
         jobtracker++;
         assert(pthread_mutex_unlock(&lock) == 0);
-        
+
         //respect time part
         if(respecttime == 1){
             gettimeofday(&t1,NULL); //get current time
@@ -251,19 +256,23 @@ void *performIO(){
                 mylatecount++;
             }
         }
-          
+
         //do the job      
         gettimeofday(&t1,NULL); //reset the start time to before start doing the job
+        if (reqsize[curtask] % 4096)
+            reqsize[curtask] = reqsize[curtask] / 4096 * 4096;
+        if (blkno[curtask] % 4096)
+            blkno[curtask] = blkno[curtask] / 4096 * 4096;
+        int ret;
         if(reqflag[curtask] == 0){
-            if(pwrite(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
-                fprintf(stderr,"Cannot write size %d to offset %lu!\n",(reqsize[curtask] / 512), (blkno[curtask] / 512));
-                exit(1);
+            if(ret =pwrite(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
+                fprintf(stderr,"Cannot write size %d to offset %lu! ret=%d\n",(reqsize[curtask] / 512), (blkno[curtask] / 512), ret);
+                //exit(1);
             }
         }else{
-            //if(pread(fd, buff, reqsize[curtask], blkno[curtask]) < 0){
-            if(syscall(548, fd, buff, reqsize[curtask], blkno[curtask]) < 0){
-                fprintf(stderr,"Cannot read size %d to offset %lu!\n",(reqsize[curtask] / 512), (blkno[curtask] / 512));
-                exit(1);
+            if((ret = pread(fd, buff, reqsize[curtask], blkno[curtask])) < 0){
+                fprintf(stderr,"Cannot read size %d to offset %"PRId64", ret=%d, errno=%d!\n",(reqsize[curtask] / 512), (blkno[curtask] / 512), ret, errno);
+                //exit(1);
             }
         }
         gettimeofday(&t2,NULL);
@@ -283,10 +292,10 @@ void *performIO(){
             assert(pthread_mutex_unlock(&lock) == 0);
         }
     }
-    
+
     atomicAdd(&latecount, mylatecount);
     atomicAdd(&slackcount, myslackcount);
-    
+
     return NULL;
 }
 
@@ -351,15 +360,18 @@ void operateWorkers(){
 
 int main(int argc, char *argv[]) {
     char device[64];
+    char logfile[64];
     char **request;
     
-    if (argc != 3){
+    if (argc != 4){
         printf("Usage: ./replayer /dev/md0 tracefile\n");
         exit(1);
     }else{
-        printf("%s\n", argv[1]);
         sprintf(device,"%s",argv[1]);
         printf("Disk ==> %s\n", device);
+        printf("Trace ==> %s\n", argv[2]);
+        sprintf(logfile, "%s", argv[3]);
+        printf("Logfile ==> %s\n", argv[3]);
     }
 
     // start the disk part
@@ -386,7 +398,7 @@ int main(int argc, char *argv[]) {
     }
     cleanCache();
     printf("After cleancache\n");
-    prepareMetrics();
+    prepareMetrics(logfile);
     printf("After prepareMetrics\n");
     operateWorkers();
 

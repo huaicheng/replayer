@@ -1,5 +1,6 @@
-all: 
-	gcc -o replayer replay.c -pthread
 
 replayer: replayer.c
-	gcc -o replayer replay.c -pthread
+	gcc -o replayer replay.c -lpthread
+
+writer: writer.c
+	gcc -o writer writer.c -pthread

@@ -26,7 +26,7 @@ int LARGEST_REQUEST_SIZE = 65536; //blocks
 int MEM_ALIGN = 4096*8; //bytes
 int numworkers = 32; // =number of threads
 int printlatency = 1; //print every io latency
-int maxio = 1000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
+int maxio = 10000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;
 int check_cache = 1;
 int block_size = 512; 

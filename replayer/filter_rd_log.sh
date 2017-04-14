@@ -5,7 +5,7 @@
 DEFLOG=$1
 DIR=$(dirname $DEFLOG)
 F=$(basename $DEFLOG)
-RDLOG=${F%.*}-rd.log
+RDLOG=${F%.*}-rd_lat.log
 
 echo $RDLOG
 

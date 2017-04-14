@@ -1,37 +1,19 @@
 #!/bin/bash
 # Author: Huaicheng <huaicheng@cs.uchicago.edu>
 
-MYPATH=/home/huaicheng/bin
-#trace=dapps-60-rrate5
 trace=TPCC-6-ms
+DEV=/dev/tgt0
 
-echo "===>Enter Replay Mode: (0: default, 5: gct, 4: ebusy)"
-read mode
+if [[ $# == 1 ]]; then
+    echo ""
+    echo " ==> Writes read locations first .."
+    sudo ./writer $DEV $trace
+    echo ""
+fi
 
-echo "======Start: $(date)====="
-$MYPATH/resetcnt
-$MYPATH/getcnt
-$MYPATH/changeReadPolicy $mode
-echo ""
+./tos.sh
 
-echo ""
-printf "===>You are in Mode: "
-dmesg | tail -n 1
-echo ""
-sleep 2
+echo " ==> Replaying the trace .."
+sudo ./replayer $DEV $trace
 
-echo "===>Checking Raid Status.."
-cat /proc/mdstat
-echo ""
-echo ""
-sleep 2
-
-echo "===>Making sure you're running $trace"
-read
-sudo ./replayer /dev/md0 $trace
-
-echo ""
-$MYPATH/getcnt
-echo ""
-
-echo "======End: $(date)====="
+cat /sys/block/$DEV/pblk/tos_tt > $trace-log.raw

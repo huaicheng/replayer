@@ -371,7 +371,7 @@ int main(int argc, char *argv[]) {
     char **request;
     
     if (argc != 3){
-        printf("Usage: ./replayer /dev/md0 tracefile\n");
+        printf("Usage: ./replayer /dev/tgt0 tracefile\n");
         exit(1);
     }else{
         printf("%s\n", argv[1]);

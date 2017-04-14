@@ -364,7 +364,7 @@ int main(int argc, char *argv[]) {
     char **request;
     
     if (argc != 4){
-        printf("Usage: ./replayer /dev/md0 tracefile\n");
+        printf("Usage: ./replayer /dev/tgt0 tracefile logfile\n");
         exit(1);
     }else{
         sprintf(device,"%s",argv[1]);

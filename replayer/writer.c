@@ -28,7 +28,7 @@ int numworkers = 1; // =number of threads
 int printlatency = 0; //print every io latency
 int maxio = 5000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 0;
-int check_cache = 1;
+int check_cache = 0;
 int block_size = 512; 
 int64_t DISK_SIZE = 0;
 

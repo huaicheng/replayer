@@ -29,7 +29,7 @@ int printlatency = 1; //print every io latency
 int maxio = 10000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;
 int check_cache = 0;
-int block_size = 512; 
+int block_size = 512;
 int64_t DISK_SIZE = 0;
 
 // ANOTHER GLOBAL VARIABLES
@@ -61,7 +61,7 @@ int64_t get_disksz(int devfd)
 }
 
 //check if cache is disabled, the result should be around 5ms for read and write
-void checkCache(int devfd){ 
+void checkCache(int devfd){
     struct timeval t1,t2;
     void *checkingbuff;
     float iotime = 0;
@@ -250,14 +250,14 @@ void *performIO(){
                 sleep_time = (useconds_t)(timestamp[curtask] * 1000) - elapsedtime;
                 if(sleep_time > 100000){
                     myslackcount++;
-                }    
+                }
                 usleep(sleep_time);
             }else{ //I am late
                 mylatecount++;
             }
         }
 
-        //do the job      
+        //do the job
         gettimeofday(&t1,NULL); //reset the start time to before start doing the job
         if (reqsize[curtask] % 4096)
             reqsize[curtask] = reqsize[curtask] / 4096 * 4096;
@@ -280,7 +280,7 @@ void *performIO(){
         int iotime = (t2.tv_sec - t1.tv_sec) * 1e6 + (t2.tv_usec - t1.tv_usec);
         if(printlatency == 1){
             assert(pthread_mutex_lock(&lock) == 0);
-            /* 
+            /*
              * Coperd: keep consistent with fio latency log format:
              * 1: timestamp in ms
              * 2: latency in us
@@ -303,24 +303,24 @@ void *printProgress(){
     while(jobtracker <= totalio){
         printf("Progress: %.2f%%\r",(float)jobtracker / totalio * 100);
         fflush(stdout);
-        
+
         if(jobtracker == totalio){
             break;
         }
-        
+
         sleep(1);
     }
     printf("\n");
-    
+
     return NULL;
 }
 
 void operateWorkers(){
     struct timeval t1,t2;
     float totaltime;
-    
+
     printf("Start doing requests...\n");
-    
+
     // thread creation
     pthread_t *tid = malloc(numworkers * sizeof(pthread_t));
     if(tid == NULL){
@@ -328,9 +328,9 @@ void operateWorkers(){
         exit(1);
     }
     pthread_t track_thread; //progress
-    
+
     assert(pthread_mutex_init(&lock, NULL) == 0);
-    
+
     int x;
     gettimeofday(&t1,NULL);
     starttime = t1.tv_sec * 1000000 + t1.tv_usec;
@@ -350,10 +350,10 @@ void operateWorkers(){
         printf("Late rate: %.2f%%\n",100 * (float)latecount / totalio);
         printf("Slack rate: %.2f%%\n",100 * (float)slackcount / totalio);
     }
-    
+
     fclose(metrics);
     assert(pthread_mutex_destroy(&lock) == 0);
-    
+
     //run statistics
     system("python statistics.py");
 }
@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
     char device[64];
     char logfile[64];
     char **request;
-    
+
     if (argc != 4){
         printf("Usage: ./replayer /dev/tgt0 tracefile logfile\n");
         exit(1);
@@ -382,7 +382,7 @@ int main(int argc, char *argv[]) {
     }
 
     DISK_SIZE = get_disksz(fd);
-    
+
     if (posix_memalign(&buff,MEM_ALIGN,LARGEST_REQUEST_SIZE * block_size)){
         fprintf(stderr,"memory allocation failed\n");
         exit(1);
@@ -403,6 +403,6 @@ int main(int argc, char *argv[]) {
     operateWorkers();
 
     free(buff);
-    
+
     return 0;
 }

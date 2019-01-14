@@ -124,8 +124,9 @@ int64_t read_trace(char ***req, char *tracefile)
     return nr_lines;
 }
 
-void parse_io(char **requestarray)
+void parse_io(char **reqs)
 {
+    char *one_io;
     int64_t i = 0;
 
     oft = malloc(nr_tt_ios * sizeof(int64_t));
@@ -135,21 +136,23 @@ void parse_io(char **requestarray)
 
     if (oft == NULL || reqsize == NULL || reqflag == NULL ||
             timestamp == NULL) {
+        printf("Coperd,memory allocation error (%d)!\n", __LINE__);
+        exit(1);
+    }
+
+    one_io = malloc(1024);
+    if (one_io == NULL) {
         fprintf(stderr, "Coperd,memory allocation error (%d)!\n", __LINE__);
         exit(1);
     }
 
     for (i = 0; i < nr_tt_ios; i++) {
-        char *io = malloc((strlen(requestarray[i]) + 1));
-        if (io == NULL) {
-            fprintf(stderr, "Coperd,memory allocation error (%d)!\n", __LINE__);
-            exit(1);
-        }
+        memset(one_io, 0, 1024);
 
-        strcpy(io, requestarray[i]);
+        strcpy(one_io, reqs[i]);
 
         // 1. request arrival time in "ms"
-        timestamp[i] = atof(strtok(io, " "));
+        timestamp[i] = atof(strtok(one_io, " "));
         // 2. device number (not needed)
         strtok(NULL, " ");
         // 3. block number (offset)
@@ -166,9 +169,10 @@ void parse_io(char **requestarray)
         // 5. request flags: 0 for write and 1 for read
         reqflag[i] = atoi(strtok(NULL, " "));
 
-        free(io);
         //printf("%.2f,%ld,%d,%d\n", timestamp[i], oft[i], reqsize[i],reqflag[i]);
     }
+
+    free(one_io);
 }
 
 void *perform_io()
@@ -336,24 +340,25 @@ void do_replay(void)
 int main (int argc, char **argv)
 {
     char device[64];
-    char logfile[64];
+    char tracefile[64], logfile[64];
     char **request;
 
     if (argc != 4) {
         printf("Usage: ./replayer /dev/tgt0 tracefile logfile\n");
         exit(1);
     } else {
-        sprintf(device,"%s", argv[1]);
+        sprintf(device, "%s", argv[1]);
         printf("Disk ==> %s\n", device);
-        printf("Trace ==> %s\n", argv[2]);
+        sprintf(tracefile, "%s", argv[2]);
+        printf("Trace ==> %s\n", tracefile);
         sprintf(logfile, "%s", argv[3]);
-        printf("Logfile ==> %s\n", argv[3]);
+        printf("Logfile ==> %s\n", logfile);
     }
 
     // start the disk part
     fd = open(device, O_DIRECT | O_RDWR);
     if (fd < 0) {
-        fprintf(stderr,"Coperd,Cannot open %s\n", device);
+        printf("Coperd,Cannot open %s\n", device);
         exit(1);
     }
 
@@ -365,7 +370,7 @@ int main (int argc, char **argv)
     }
 
     // read the trace before everything else
-    nr_tt_ios = read_trace(&request, argv[2]);
+    nr_tt_ios = read_trace(&request, tracefile);
 
     // store trace related fields into our global arraries
     parse_io(request);

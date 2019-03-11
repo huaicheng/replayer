@@ -2,7 +2,7 @@
 
  * replayer will do "%" calculation if I/O offset is beyond drive size
  * replay.c takes 0 for write and 1 for read, [[opposite of Fio]]
- * input trace file format (CSV):
+ * input trace file format:
    - 1: timestamp in ms
    - 2: disk ID (not used)
    - 3: offset in bytes

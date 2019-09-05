@@ -25,7 +25,7 @@ enum {
 
 int LARGEST_REQUEST_SIZE = 65536; //blocks
 int MEM_ALIGN = 4096*8; //bytes
-int nr_workers = 512;
+int nr_workers = 1024;
 int printlatency = 1; //print every io latency
 int maxio = 10000000; //halt if number of IO > maxio, to prevent printing too many to metrics file
 int respecttime = 1;

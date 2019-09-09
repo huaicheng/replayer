@@ -10,5 +10,5 @@ RDLOG=${F%.*}-rd_lat.log
 echo $RDLOG
 
 # In replay.c, 1 means read and 0 means write [[opposite of FIO]]
-awk -F, '{if ($3 == 1 && $2 < 100000) print $0}' $DEFLOG > $DIR/$RDLOG
-#awk -F, '{if ($3 == 1) print $0}' $DEFLOG > $DIR/$RDLOG
+#awk -F, '{if ($3 == 1 && $2 < 100000) print $0}' $DEFLOG > $DIR/$RDLOG
+awk -F, '{if ($3 == 1) print $0}' $DEFLOG > $DIR/$RDLOG

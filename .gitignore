@@ -9,3 +9,5 @@ resources/
 # ignore input output dir
 out*
 in*
+
+ronald/

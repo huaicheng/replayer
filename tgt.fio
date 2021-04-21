@@ -1,0 +1,17 @@
+[global]
+ioengine=psync
+rw=write
+numjobs=1
+bs=4k
+size=512m
+;number_ios=20000
+direct=1
+randrepeat=0
+thread
+group_reporting
+per_job_logs=0
+;write_lat_log=KNOW-YOUR-OCSSD/chip40-fio-lat/chip40_2_ro-1t-4k
+
+[tgt0-noise]
+filename=/dev/tgt0
+;sync=1

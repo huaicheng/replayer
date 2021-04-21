@@ -340,7 +340,7 @@ void do_replay(void)
 int main (int argc, char **argv)
 {
     char device[64];
-    char tracefile[64], logfile[64];
+    char tracefile[128], logfile[128];
     char **request;
 
     if (argc != 4) {

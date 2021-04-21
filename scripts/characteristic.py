@@ -164,7 +164,7 @@ def getTraceInfo(tracefile):
   out.write("Number of small random writes / sec: %s\n" % "{0:.2f}".format(float(small_random_writes) / ((endtrace_time - starttrace_time) / 1000)))
   out.write("Total big writes: %d\n" % sum(write_countbucket[1:len(write_countbucket)]))
   out.write("Number of big writes / sec: %s\n" % "{0:.2f}".format(float(sum(write_countbucket[1:len(write_countbucket)])) / ((endtrace_time - starttrace_time) / 1000)))
-  out.write("Score (#bigWrites/#smallWrites): %s\n" % "{0:.2f}".format(float(sum(write_countbucket[1:len(write_countbucket)])) / write_countbucket[0]))
+  #out.write("Score (#bigWrites/#smallWrites): %s\n" % "{0:.2f}".format(float(sum(write_countbucket[1:len(write_countbucket)])) / write_countbucket[0]))
   out.write("\n")
 
 #---------------------------
